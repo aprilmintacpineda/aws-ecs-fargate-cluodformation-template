@@ -1,0 +1,374 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: This template creates resources for the project aws-fargate-example by April Mintac Pineda
+
+Resources:
+  # VPC
+  myVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 192.168.0.0/16
+  myVpcInternetGateway:
+    Type: AWS::EC2::InternetGateway
+  myVpcInternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: 
+      InternetGatewayId: !Ref myVpcInternetGateway
+      VpcId: !Ref myVpc
+
+  # Public subnet route table configuration
+  myVpcPublicSubnetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref myVpc
+  myVpcPublicSubnetRouteTableInternetAccess:
+    Type: AWS::EC2::Route
+    Properties: 
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref myVpcPublicSubnetRouteTable
+      GatewayId: !Ref myVpcInternetGateway
+  
+  # NAT Gateways for public subnets
+  myVpcPrivateSubnet1NatGatewayEIP:
+    Type: AWS::EC2::EIP
+    DependsOn:
+      - myVpcInternetGatewayAttachment
+    Properties: 
+      Domain: vpc
+  myVpcPrivateSubnet1NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties: 
+      AllocationId: !GetAtt myVpcPrivateSubnet1NatGatewayEIP.AllocationId
+      SubnetId: !Ref myVpcPublicSubnet1
+
+  myVpcPrivateSubnet2NatGatewayEIP:
+    Type: AWS::EC2::EIP
+    DependsOn:
+      - myVpcInternetGatewayAttachment
+    Properties: 
+      Domain: vpc
+  myVpcPrivateSubnet2NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties: 
+      AllocationId: !GetAtt myVpcPrivateSubnet2NatGatewayEIP.AllocationId
+      SubnetId: !Ref myVpcPublicSubnet2
+
+  # Private subnet route table configuration
+  myVpcPrivateSubnet1RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref myVpc
+  myVpcPrivateSubnet1RouteTableNatGateway:
+    Type: AWS::EC2::Route
+    Properties: 
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref myVpcPrivateSubnet1RouteTable
+      NatGatewayId: !Ref myVpcPrivateSubnet1NatGateway
+
+  myVpcPrivateSubnet2RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref myVpc
+  myVpcPrivateSubnet2RouteTableNatGateway:
+    Type: AWS::EC2::Route
+    Properties: 
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref myVpcPrivateSubnet2RouteTable
+      NatGatewayId: !Ref myVpcPrivateSubnet2NatGateway
+
+  # Public subnet 1
+  myVpcPublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      AvailabilityZone: us-east-1a
+      CidrBlock: 192.168.1.0/24
+      VpcId: !Ref myVpc
+  myVpcPublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      RouteTableId: !Ref myVpcPublicSubnetRouteTable
+      SubnetId: !Ref myVpcPublicSubnet1
+
+  # Public subnet 2
+  myVpcPublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      AvailabilityZone: us-east-1b
+      CidrBlock: 192.168.2.0/24
+      VpcId: !Ref myVpc
+  myVpcPublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      RouteTableId: !Ref myVpcPublicSubnetRouteTable
+      SubnetId: !Ref myVpcPublicSubnet2
+
+  # Private subnet 1
+  myVpcPrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      AvailabilityZone: us-east-1a
+      CidrBlock: 192.168.3.0/24
+      VpcId: !Ref myVpc
+  myVpcPrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      RouteTableId: !Ref myVpcPrivateSubnet1RouteTable
+      SubnetId: !Ref myVpcPrivateSubnet1
+
+  # Private subnet 2
+  myVpcPrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      AvailabilityZone: us-east-1b
+      CidrBlock: 192.168.4.0/24
+      VpcId: !Ref myVpc
+  myVpcPrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      RouteTableId: !Ref myVpcPrivateSubnet2RouteTable
+      SubnetId: !Ref myVpcPrivateSubnet2
+
+  # ECS clusters
+  myEcsClusterTaskDefinitionRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      RoleName: aws-fargate-example-ecs-cluster-exec-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+  myEcsClusterLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: aws-fargate-example-ecs
+  myEcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties: 
+      ClusterName: aws-fargate-example
+      CapacityProviders: 
+        - FARGATE
+  myEcsClusterTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    DependsOn:
+      - myEcsClusterLogGroup
+    Properties: 
+      ContainerDefinitions: 
+        - Name: nodejs-fastify-app
+          PortMappings: 
+            - ContainerPort: 3000
+              Protocol: TCP
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.us-east-1.amazonaws.com/<image-name-here>:latest
+          # Send logs to CloudWatch Logs
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref myEcsClusterLogGroup
+              awslogs-stream-prefix: nodejs-fastify-app
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: 512
+      Memory: 1024
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt myEcsClusterTaskDefinitionRole.Arn
+  myEcsClusterService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - myEcsClusterLoadBalancer
+    Properties:
+      LaunchType: FARGATE
+      TaskDefinition: !Ref myEcsClusterTaskDefinition
+      Cluster: !Ref myEcsCluster
+      DesiredCount: 1
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      LoadBalancers:
+        - ContainerName: nodejs-fastify-app
+          ContainerPort: 3000
+          TargetGroupArn: !Ref myEcsClusterLoadBalancerTargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          SecurityGroups: 
+            - !Ref myEcsClusterServiceSecGroup
+          Subnets: 
+            - !Ref myVpcPrivateSubnet1
+            - !Ref myVpcPrivateSubnet2
+  
+  # Load Balancer
+  myEcsClusterLoadBalancerTargetGroup: 
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties: 
+      VpcId: !Ref myVpc
+      TargetType: ip
+      Port: 3000
+      Protocol: HTTP
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 90
+      HealthCheckPath: /health
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 60
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+  myEcsClusterServiceSecGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: aws-fargate-example
+      VpcId: !Ref myVpc
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          SourceSecurityGroupId: !Ref myEcsClusterLoadBalancerSecGroup
+  myEcsClusterLoadBalancerSecGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: aws-fargate-example
+      VpcId: !Ref myVpc
+      SecurityGroupIngress:
+        - CidrIpv6: ::/0
+          FromPort: 80
+          ToPort: 80
+          IpProtocol: TCP
+        - CidrIp: 0.0.0.0/0
+          FromPort: 80
+          ToPort: 80
+          IpProtocol: TCP
+  myEcsClusterLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn:
+      - myEcsClusterLoadBalancerSecGroup
+      - myVpcPublicSubnetRouteTableInternetAccess
+    Properties:
+      Scheme: internet-facing
+      SecurityGroups: 
+        - !Ref myEcsClusterLoadBalancerSecGroup
+      Subnets: 
+        - !Ref myVpcPublicSubnet1
+        - !Ref myVpcPublicSubnet2
+      Type: application
+  myEcsClusterLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties: 
+      LoadBalancerArn: !Ref myEcsClusterLoadBalancer
+      DefaultActions: 
+        - Type: forward
+          TargetGroupArn: !Ref myEcsClusterLoadBalancerTargetGroup
+      Port: 80
+      Protocol: HTTP
+  
+  # Auto scaling
+  myEcsClusterServiceAutoScalingTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties: 
+      MaxCapacity: 10
+      MinCapacity: 1
+      ResourceId: !Join
+        - /
+        - - service
+          - !Ref myEcsCluster
+          - !GetAtt myEcsClusterService.Name
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+  # CPU based autoscaling
+  # Will maintain a CPU utilization of between 31 - 69 percent
+  myEcsClusterServiceCpuAutoScaleUpPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties: 
+      PolicyName: aws-fargate-example-cpu-scale-up
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref myEcsClusterServiceAutoScalingTarget
+      StepScalingPolicyConfiguration: 
+        AdjustmentType: ChangeInCapacity
+        Cooldown: 30
+        MetricAggregationType: Average
+        StepAdjustments:
+          - MetricIntervalLowerBound: 0
+            ScalingAdjustment: 1
+  myEcsClusterServiceCpuAutoScaleUpAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: aws-fargate-example-cpu-scale-up-alarm
+      EvaluationPeriods: 6
+      Statistic: Average
+      Threshold: 70
+      Period: 10
+      AlarmActions:
+        - !Ref myEcsClusterServiceCpuAutoScaleUpPolicy
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ServiceName
+          Value: !GetAtt myEcsClusterService.Name
+        - Name: ClusterName
+          Value: !Ref myEcsCluster
+  myEcsClusterServiceCpuAutoScaleDownPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties: 
+      PolicyName: aws-fargate-example-cpu-scale-down
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref myEcsClusterServiceAutoScalingTarget
+      StepScalingPolicyConfiguration: 
+        AdjustmentType: ChangeInCapacity
+        Cooldown: 30
+        MetricAggregationType: Average
+        StepAdjustments:
+          - MetricIntervalUpperBound: 0
+            ScalingAdjustment: -1
+  myEcsClusterServiceCpuAutoScaleDownAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: aws-fargate-example-cpu-scale-down-alarm
+      EvaluationPeriods: 60
+      Statistic: Average
+      Threshold: 30
+      Period: 10
+      AlarmActions:
+        - !Ref myEcsClusterServiceCpuAutoScaleDownPolicy
+      ComparisonOperator: LessThanOrEqualToThreshold
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ServiceName
+          Value: !GetAtt myEcsClusterService.Name
+        - Name: ClusterName
+          Value: !Ref myEcsCluster
+
+  # WAF
+  myEcsClusterLoadBalancerWebAcl:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      DefaultAction:
+        Block: {}
+      Scope: REGIONAL
+      VisibilityConfig: 
+        CloudWatchMetricsEnabled: true
+        MetricName: aws-fargate-example-webacl
+        SampledRequestsEnabled: true
+      Rules:
+        - Action:
+            Block: {}
+          Name: RateLimit
+          Statement:
+            RateBasedStatement:
+              AggregateKeyType: IP
+              Limit: 2000
+          VisibilityConfig: 
+            CloudWatchMetricsEnabled: true
+            MetricName: aws-fargate-example-webacl-rate-limit
+            SampledRequestsEnabled: true
+          Priority: 0
+  myEcsClusterLoadBalancerWebAclAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    Properties: 
+      ResourceArn: !Ref myEcsClusterLoadBalancer
+      WebACLArn: !GetAtt myEcsClusterLoadBalancerWebAcl.Arn
+
+# Outputs:

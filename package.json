@@ -1,0 +1,53 @@
+{
+  "name": "aws-fargate-example",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "fastify": "^3.25.2",
+    "ws": "^8.4.0"
+  },
+  "author": {
+    "name": "April Mintac Pineda",
+    "url": "https://github.com/aprilmintacpineda"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.16.0",
+    "@babel/core": "^7.16.5",
+    "@babel/plugin-transform-modules-commonjs": "^7.16.5",
+    "@babel/preset-env": "^7.16.5",
+    "@babel/preset-typescript": "^7.16.5",
+    "@types/node": "^17.0.5",
+    "@types/ws": "^8.2.2",
+    "@typescript-eslint/eslint-plugin": "^5.8.1",
+    "@typescript-eslint/parser": "^5.8.1",
+    "@typescript-eslint/typescript-estree": "^5.8.1",
+    "babel-plugin-module-resolver": "^4.1.0",
+    "eslint": "^8.5.0",
+    "eslint-import-resolver-babel-module": "^5.3.1",
+    "eslint-plugin-import": "^2.25.3",
+    "eslint-plugin-jest": "^25.3.2",
+    "eslint-plugin-module-resolver": "^1.4.0",
+    "eslint-plugin-react": "^7.28.0",
+    "eslint-plugin-react-hooks": "^4.3.0",
+    "husky": "^7.0.4",
+    "lint-staged": "^12.1.4",
+    "nodemon": "^2.0.15",
+    "prettier": "^2.5.1",
+    "typescript": "^4.5.4"
+  },
+  "scripts": {
+    "start": "node build/index.js",
+    "dev": "nodemon --watch ./src --exec 'ts-node' src/index.ts",
+    "build": "rm -rf build && babel src -d build --copy-files --extensions '.ts'",
+    "eslint": "eslint . --ext .js,.ts --fix",
+    "prettier": "prettier \"**/*.js\" \"**/*.ts\" --write",
+    "lint": "npm run prettier && npm run eslint"
+  },
+  "lint-staged": {
+    "*.js|*.ts": [
+      "prettier --write",
+      "eslint --fix"
+    ]
+  }
+}

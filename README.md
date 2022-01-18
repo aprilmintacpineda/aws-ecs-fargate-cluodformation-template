@@ -8,6 +8,7 @@ I used this to deploy a dockerized NodeJS Server with WebSocket on AWS.
 - Virtual Private Cloud
 - Application Load Balancer
 - Application Auto Scaling
+- CloudWatch
 
 # Setup
 

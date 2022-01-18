@@ -371,4 +371,161 @@ Resources:
       ResourceArn: !Ref myEcsClusterLoadBalancer
       WebACLArn: !GetAtt myEcsClusterLoadBalancerWebAcl.Arn
 
+  # cloudwatch dashboard
+  myCloudWatchDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    DependsOn:
+      - myEcsCluster
+      - myEcsClusterService
+      - myEcsClusterServiceCpuAutoScaleUpAlarm
+      - myEcsClusterServiceCpuAutoScaleDownAlarm
+    Properties: 
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "alarm",
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "alarms": [
+                  "${myEcsClusterServiceCpuAutoScaleUpAlarm.Arn}",
+                  "${myEcsClusterServiceCpuAutoScaleDownAlarm.Arn}"
+                ],
+                "sortBy": "stateUpdatedTimestamp",
+                "title": "CPU scale alarms"
+              }
+            },
+            {
+              "type":"metric",
+              "width":12,
+              "height":6,
+              "properties":{
+                "metrics":[
+                  [
+                    "AWS/ECS",
+                    "CPUUtilization",
+                    "ServiceName",
+                    "${myEcsClusterService.Name}",
+                    "ClusterName",
+                    "${myEcsCluster}"
+                  ],
+                  [
+                    "AWS/ECS",
+                    "MemoryUtilization",
+                    "ServiceName",
+                    "${myEcsClusterService.Name}",
+                    "ClusterName",
+                    "${myEcsCluster}"
+                  ]
+                ],
+                "period":60,
+                "stat":"Average",
+                "title":"ECS Utilizations",
+                "legend": {
+                  "position": "right"
+                },
+                "region": "${AWS::Region}"
+              }
+            },
+            {
+              "type":"metric",
+              "width":12,
+              "height":6,
+              "properties":{
+                "metrics":[
+                  [
+                    "AWS/ApplicationELB",
+                    "RequestCount",
+                    "LoadBalancer",
+                    "${myEcsClusterLoadBalancer.LoadBalancerFullName}",
+                    "AvailabilityZone",
+                    "us-east-1a"
+                  ],
+                  [
+                    "AWS/ApplicationELB",
+                    "RejectedConnectionCount",
+                    "LoadBalancer",
+                    "${myEcsClusterLoadBalancer.LoadBalancerFullName}",
+                    "AvailabilityZone",
+                    "us-east-1a"
+                  ],
+                  [
+                    "AWS/ApplicationELB",
+                    "HealthyHostCount",
+                    "LoadBalancer",
+                    "${myEcsClusterLoadBalancer.LoadBalancerFullName}",
+                    "AvailabilityZone",
+                    "us-east-1a"
+                  ],
+                  [
+                    "AWS/ApplicationELB",
+                    "TargetResponseTime",
+                    "LoadBalancer",
+                    "${myEcsClusterLoadBalancer.LoadBalancerFullName}",
+                    "AvailabilityZone",
+                    "us-east-1a"
+                  ]
+                ],
+                "period":60,
+                "stat":"Average",
+                "title":"Load Balancer us-east-1a",
+                "legend": {
+                  "position": "right"
+                },
+                "region": "${AWS::Region}"
+              }
+            },
+            {
+              "type":"metric",
+              "width":12,
+              "height":6,
+              "properties":{
+                "metrics":[
+                  [
+                    "AWS/ApplicationELB",
+                    "RequestCount",
+                    "LoadBalancer",
+                    "${myEcsClusterLoadBalancer.LoadBalancerFullName}",
+                    "AvailabilityZone",
+                    "us-east-1b"
+                  ],
+                  [
+                    "AWS/ApplicationELB",
+                    "RejectedConnectionCount",
+                    "LoadBalancer",
+                    "${myEcsClusterLoadBalancer.LoadBalancerFullName}",
+                    "AvailabilityZone",
+                    "us-east-1b"
+                  ],
+                  [
+                    "AWS/ApplicationELB",
+                    "HealthyHostCount",
+                    "LoadBalancer",
+                    "${myEcsClusterLoadBalancer.LoadBalancerFullName}",
+                    "AvailabilityZone",
+                    "us-east-1b"
+                  ],
+                  [
+                    "AWS/ApplicationELB",
+                    "TargetResponseTime",
+                    "LoadBalancer",
+                    "${myEcsClusterLoadBalancer.LoadBalancerFullName}",
+                    "AvailabilityZone",
+                    "us-east-1b"
+                  ]
+                ],
+                "period":60,
+                "stat":"Average",
+                "title":"Load Balancer us-east-1b",
+                "legend": {
+                  "position": "right"
+                },
+                "region": "${AWS::Region}"
+              }
+            }
+          ]
+        }
+      DashboardName: aws-fargate-example
+
 # Outputs:

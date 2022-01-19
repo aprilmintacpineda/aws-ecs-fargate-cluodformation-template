@@ -186,7 +186,7 @@ Resources:
       LaunchType: FARGATE
       TaskDefinition: !Ref myEcsClusterTaskDefinition
       Cluster: !Ref myEcsCluster
-      DesiredCount: 1
+      DesiredCount: 2
       DeploymentConfiguration:
         MaximumPercent: 200
         MinimumHealthyPercent: 100
@@ -267,7 +267,7 @@ Resources:
     Type: AWS::ApplicationAutoScaling::ScalableTarget
     Properties: 
       MaxCapacity: 10
-      MinCapacity: 1
+      MinCapacity: 2
       ResourceId: !Join
         - /
         - - service

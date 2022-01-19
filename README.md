@@ -1,6 +1,6 @@
 <img src="./docs/diagram.png" >
 
-I used this to deploy a dockerized NodeJS Server with WebSocket on AWS.
+I used this to deploy a dockerized NodeJS Server with WebSocket on AWS with monitoring using CloudWatch Dashboard.
 
 - Elastic Compute Service
 - Fargate
